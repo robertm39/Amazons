@@ -21,20 +21,90 @@ def apply_moves(boards, moves):
     Return the boards after the moves have been applied.
     
     Parameters:
-        boards: The boards, in standard format [N, X, Y, P, O, F]
-        moves: The moves, in standard format [N, X_S, Y_S, X_M, Y_M, X_F, Y_F]
+        boards: The boards, in standard format [N, X, Y, 3]
+        moves: The moves, in standard format [N, 6]
     """
-    pass
+    
+    boards = boards.clone().detach() #Use a duplicate to avoid side effects
+    
+    for i in range(0, boards.shape[0]):#Unloop it later
+        board = boards[i, :, :, :,]
+        x_s, y_s, x_m, y_m, x_f, y_f = moves[i, :]
+        
+        #The data for the square the move starts from
+        start_square = board[x_s, y_s, :]
+        
+        #Zero out the square being moved from
+        board[x_s, y_s, :] = torch.tensor([0, 0, 0])
+        
+        #Now the final square will have the same data the start square had
+        board[x_m, y_m, :] = start_square
+        
+        #Now the targeted square will be burning
+        board[x_f, y_f, :] = torch.tensor([0, 0, 1])
+        boards[i, :, :, :] = board
+        
+    return boards
+
+def is_square_open(board, x, y, obs_indices):
+    if x < 0 or y < 0:
+        return False
+    
+    w, h = board.shape[1], board.shape[2]
+    if x >= w or y >= h:
+        return False
+    
+    square_open = True
+    for i in obs_indices:
+        if board[x, y, i] == 1:
+            square_open = False
+    return square_open
+
+def is_surrounded(board, x, y, obs_indices):
+    for dx in range(-1, 2):
+        for dy in range(-1, 2):
+            if is_square_open(board, x+dx, y+dy, obs_indices):
+                return False
+    return True
 
 def cant_move_indices(boards, mover):
     """
     Return the indices of the boards where the given player can't move.
     
     Parameters:
-        boards: The boards, in standard format [N, X, Y, P, O, F]
+        boards: The boards, in standard format [N, X, Y, 3]
         mover: The moving player
     """
-    pass
+    
+    boards = boards.clone().detach() #Use a duplicate to avoid side effects
+    
+    if mover == Mover.PLAYER:
+        p_index = 0
+        o_index = 1
+    elif mover == Mover.OPPONENT:
+        p_index = 1
+        o_index = 0
+    else:
+        raise AssertionError('mover:', mover)
+    
+    indices = []
+    
+    for i in range(0, boards.shape[0]):
+        board = boards[i, :, :, :]
+        can_move=False
+        for x in range(0, board.shape[1]):
+            for y in range(0, board.shape[2]):
+                if board[x, y, p_index] == 1:
+                    if not is_surrounded(board, x, y, (o_index, 2)):
+                        can_move = True
+                if can_move:
+                    break
+            if can_move:
+                break
+        if not can_move:
+            indices.append(i)
+    
+    return indices
 
 def remove_finished_games(boards, loses_indices):
     num_boards = boards.shape[0]
