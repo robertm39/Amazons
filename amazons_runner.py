@@ -47,16 +47,11 @@ def remove_finished_games(boards, loses_indices):
 def play_games(player, opponent, boards, player_goes_first=True):
     outcomes = []
     moves = 1
+    
     if not player_goes_first:
-#        num_boards = boards.shape[0]
         
         opponent_loses_indices = cant_move_indices(boards, Mover.OPPONENT)
         boards = remove_finished_games(boards, opponent_loses_indices)
-#        keep_indices = [i for i in range(0, num_boards) if not i in opponent_loses_indices]
-#        keep_indices_tensor = torch.tensor(keep_indices)
-#        
-#        #Only keep the boards the opponent hasn't lost in yet
-#        boards = torch.index_select(boards, dim=0, index=keep_indices_tensor)
         
         for i in range(0, len(opponent_loses_indices)):
             outcomes.append((moves, 1))
@@ -65,8 +60,19 @@ def play_games(player, opponent, boards, player_goes_first=True):
         boards = apply_moves(boards, moves)
         moves += 1
     
-    for (p1, p1_mover, p2, p2_mover, lose_num) in ((player, Mover.PLAYER, opponent, Mover.OPPONENT, 0),
-                                                   (opponent, Mover.OPPONENT, player, Mover.PLAYER, 1)):
-        p1_loses_indices = cant_move_indices(boards, p1_mover)
-        moves = player(boards)
-        boards = apply_moves(boards, moves)
+    while boards.shape[0]:
+        for (p1, p1_mover, p2, p2_mover, lose_num) in ((player, Mover.PLAYER, opponent, Mover.OPPONENT, 0),
+                                                       (opponent, Mover.OPPONENT, player, Mover.PLAYER, 1)):
+            
+            p1_loses_indices = cant_move_indices(boards, p1_mover)
+            boards = remove_finished_games(boards, p1_loses_indices)
+            
+            for i in range(0, len(p1_loses_indices)):
+                outcomes.append((moves, lose_num))
+            
+            if boards.shape[0]:
+                moves = player(boards)
+                boards = apply_moves(boards, moves)
+                moves += 1
+    
+    return outcomes
