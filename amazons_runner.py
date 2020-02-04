@@ -19,9 +19,10 @@ class Mover(Enum):
 def apply_moves(boards, moves):
     """
     Return the boards after the moves have been applied.
+    Does not check that the moves are valid.
     
     Parameters:
-        boards: The boards, in standard format [N, X, Y, 3]
+        boards: The boards, in standard format [N, X, Y, 4]
         moves: The moves, in standard format [N, 6]
     """
     
@@ -32,16 +33,16 @@ def apply_moves(boards, moves):
         x_s, y_s, x_m, y_m, x_f, y_f = moves[i, :]
         
         #The data for the square the move starts from
-        start_square = board[x_s, y_s, :]
+        start_square = board[x_s, y_s, :].clone().detach()
         
         #Zero out the square being moved from
-        board[x_s, y_s, :] = torch.tensor([0, 0, 0])
+        board[x_s, y_s, :] = torch.tensor([0, 0, 0, 1])
         
         #Now the final square will have the same data the start square had
         board[x_m, y_m, :] = start_square
         
         #Now the targeted square will be burning
-        board[x_f, y_f, :] = torch.tensor([0, 0, 1])
+        board[x_f, y_f, :] = torch.tensor([0, 0, 1, 0])
         boards[i, :, :, :] = board
         
     return boards
@@ -50,15 +51,16 @@ def is_square_open(board, x, y):
     if x < 0 or y < 0:
         return False
     
-    w, h = board.shape[1], board.shape[2]
+    w, h = board.shape[0], board.shape[1]
     if x >= w or y >= h:
         return False
     
-    square_open = True
-    for i in (0, 1, 2): #Anything blocks a square
-        if board[x, y, i] == 1:
-            square_open = False
-    return square_open
+#    square_open = True
+#    for i in (0, 1, 2): #Anything blocks a square
+#        if board[x, y, i] == 1:
+#            square_open = False
+#    return square_open
+    return board[x, y, 3] == 1
 
 def is_surrounded(board, x, y):
     for dx in range(-1, 2):
@@ -74,7 +76,7 @@ def cant_move_indices(boards, mover):
     Return the indices of the boards where the given player can't move.
     
     Parameters:
-        boards: The boards, in standard format [N, X, Y, 3]
+        boards: The boards, in standard format [N, X, Y, 4]
         mover: The moving player
     """
     
@@ -87,13 +89,20 @@ def cant_move_indices(boards, mover):
     else:
         raise AssertionError('mover:', mover)
     
+#    if mover == 'P':
+#        p_index = 0
+#    elif mover == 'O':
+#        p_index = 1
+#    else:
+#        raise AssertionError('mover:', mover)
+    
     indices = []
     
     for i in range(0, boards.shape[0]):
         board = boards[i, :, :, :]
         can_move=False
-        for x in range(0, board.shape[1]):
-            for y in range(0, board.shape[2]):
+        for x in range(0, board.shape[0]):
+            for y in range(0, board.shape[1]):
                 if board[x, y, p_index] == 1:
                     if not is_surrounded(board, x, y):
                         can_move = True
