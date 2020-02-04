@@ -46,7 +46,7 @@ def apply_moves(boards, moves):
         
     return boards
 
-def is_square_open(board, x, y, obs_indices):
+def is_square_open(board, x, y):
     if x < 0 or y < 0:
         return False
     
@@ -55,15 +55,17 @@ def is_square_open(board, x, y, obs_indices):
         return False
     
     square_open = True
-    for i in obs_indices:
+    for i in (0, 1, 2): #Anything blocks a square
         if board[x, y, i] == 1:
             square_open = False
     return square_open
 
-def is_surrounded(board, x, y, obs_indices):
+def is_surrounded(board, x, y):
     for dx in range(-1, 2):
         for dy in range(-1, 2):
-            if is_square_open(board, x+dx, y+dy, obs_indices):
+            if dx == 0  and dy == 0: #Don't check the square we're in
+                continue
+            if is_square_open(board, x+dx, y+dy):
                 return False
     return True
 
@@ -80,10 +82,8 @@ def cant_move_indices(boards, mover):
     
     if mover == Mover.PLAYER:
         p_index = 0
-        o_index = 1
     elif mover == Mover.OPPONENT:
         p_index = 1
-        o_index = 0
     else:
         raise AssertionError('mover:', mover)
     
@@ -95,7 +95,7 @@ def cant_move_indices(boards, mover):
         for x in range(0, board.shape[1]):
             for y in range(0, board.shape[2]):
                 if board[x, y, p_index] == 1:
-                    if not is_surrounded(board, x, y, (o_index, 2)):
+                    if not is_surrounded(board, x, y):
                         can_move = True
                 if can_move:
                     break
